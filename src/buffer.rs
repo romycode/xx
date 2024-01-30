@@ -32,23 +32,20 @@ impl Buffer {
     fn move_cursor(&mut self, cursor: usize) {
         self.cursor = cursor;
         self.line = 0;
-        let mut last = 0;
         for (i, line) in self.lines.iter().enumerate() {
-            if last <= self.cursor && self.cursor < *line {
+            if *line > self.cursor {
                 self.line = i;
                 break;
             }
-            last = *line;
         }
 
         if self.line == 0 {
             self.column = self.cursor;
             return;
         }
-
         self.column = match self.cursor.abs_diff(self.lines[self.line - 1]) {
             0 => 0,
-            v => v - 1
+            diff => diff
         };
     }
     fn move_chars_end(&mut self) {
@@ -105,7 +102,7 @@ impl Buffer {
         if '\n' == removed {
             self.line -= 1;
             self.cursor = self.lines[self.line] - 1;
-            self.column = self.current_line_cols();
+            self.column = self.current_line_cols() - 1;
             self.lines[self.line] = self.lines.remove(self.line + 1);
         }
     }
@@ -117,13 +114,12 @@ impl Buffer {
                 self.line -= 1;
 
                 let curr_line_columns = self.current_line_cols();
-
                 if curr_line_columns < self.column {
-                    self.column = curr_line_columns;
+                    self.column = curr_line_columns - 1;
                 }
                 self.cursor = match self.line {
                     0 => self.column,
-                    v => self.lines[v - 1] + self.column
+                    v => self.lines[v - 1] + self.column - 1
                 };
 
                 if end {
@@ -147,13 +143,18 @@ impl Buffer {
                 self.line += 1;
 
                 let curr_line_columns = self.current_line_cols();
-
                 if curr_line_columns < self.column {
-                    self.column = curr_line_columns;
+                    self.column = curr_line_columns - 1;
                 }
-                self.cursor = self.lines[self.line - 1] + self.column;
+                self.cursor = match self.line {
+                    0 => self.column,
+                    v => self.lines[v - 1] + self.column
+                };
 
                 if end {
+                    if self.line + 1 == self.lines.len() {
+                        self.column += 1;
+                    }
                     self.cursor = self.lines[self.line];
                     self.column = curr_line_columns;
                 }
@@ -188,113 +189,6 @@ impl Buffer {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-// #[test]
-    // fn should_move_cursor() {
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john doe\ntiene una vida complicada");
-    //     assert_eq!("john doe\ntiene una vida complicada", buff.content.iter().collect::<String>());
-    //     assert_eq!("c:34 l:1 c:25 ls:[9, 34]", buff.test());
-    // }
-    //
-    // #[test]
-    // fn should_move_line_up() {
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john doe\ntiene una vida complicada");
-    //     assert_eq!("john doe\ntiene una vida complicada", buff.content.iter().collect::<String>());
-    //     assert_eq!("c:34 l:1 c:25 ls:[9, 34]", buff.test());
-    //     buff.move_line(LineMovement::Up, true, false);
-    //     assert_eq!("c:0 l:0 c:0 ls:[9, 34]", buff.test());
-    //
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john doe\ntiene una \nvida complicada");
-    //     assert_eq!("john doe\ntiene una \nvida complicada", buff.content.iter().collect::<String>());
-    //     assert_eq!("c:35 l:2 c:15 ls:[9, 20, 35]", buff.test());
-    //     buff.move_line(LineMovement::Up, true, false);
-    //     assert_eq!("c:9 l:1 c:0 ls:[9, 20, 35]", buff.test());
-    //
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john doe\ntiene una \nvida");
-    //     assert_eq!("john doe\ntiene una \nvida", buff.content.iter().collect::<String>());
-    //     assert_eq!("c:24 l:2 c:4 ls:[9, 20, 24]", buff.test());
-    //     buff.move_line(LineMovement::Up, true, false);
-    //     assert_eq!("c:9 l:1 c:0 ls:[9, 20, 24]", buff.test());
-    // }
-    //
-    // #[test]
-    // fn should_move_line_down() {
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john doe\ntiene una \nvida complicada");
-    //     assert_eq!("john doe\ntiene una \nvida complicada", buff.content.iter().collect::<String>());
-    //     assert_eq!("c:35 l:2 c:15 ls:[9, 20, 35]", buff.test());
-    //
-    //     buff.move_cursor(5);
-    //     assert_eq!("c:5 l:0 c:5 ls:[9, 20, 35]", buff.test());
-    //
-    //     buff.move_line(LineMovement::Down, false, false);
-    //     assert_eq!("c:14 l:1 c:5 ls:[9, 20, 35]", buff.test());
-    //
-    //     buff.move_line(LineMovement::Down, false, false);
-    //     assert_eq!("c:25 l:2 c:5 ls:[9, 20, 35]", buff.test());
-    //
-    //     buff.move_line(LineMovement::Down, false, false);
-    //     assert_eq!("c:25 l:2 c:5 ls:[9, 20, 35]", buff.test());
-    // }
-    //
-    // #[test]
-    // fn should_insert_char_at_cursor() {
-    //     let mut buff = Buffer::new();
-    //     assert_eq!("", buff.content.iter().collect::<String>());
-    //     buff.insert('a');
-    //     assert_eq!("a", buff.content.iter().collect::<String>());
-    // }
-    //
-    // #[test]
-    // fn should_insert_new_line() {
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john");
-    //     assert_eq!("john", buff.content.iter().collect::<String>());
-    //     buff.insert('\n');
-    //     assert_eq!("john\n", buff.content.iter().collect::<String>());
-    // }
-    //
-    // #[test]
-    // fn should_split_line_in_two() {
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john");
-    //     assert_eq!("c:4 l:0 c:4 ls:[4]", buff.test());
-    //     assert_eq!("john", buff.content.iter().collect::<String>());
-    //     buff.insert_at(2, '\n');
-    //     assert_eq!("c:3 l:1 c:0 ls:[3, 5]", buff.test());
-    //     assert_eq!("jo\nhn", buff.content.iter().collect::<String>());
-    // }
-    //
-    // #[test]
-    // fn should_remove_char_at_cursor() {
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john");
-    //     assert_eq!("c:4 l:0 c:4 ls:[4]", buff.test());
-    //     assert_eq!("john", buff.content.iter().collect::<String>());
-    //     buff.remove();
-    //     assert_eq!("c:3 l:0 c:3 ls:[3]", buff.test());
-    //     assert_eq!("joh", buff.content.iter().collect::<String>());
-    // }
-    //
-    // #[test]
-    // fn should_remove_new_line() {
-    //     let mut buff = Buffer::new();
-    //     add_string_to_buffer(&mut buff, "john\n");
-    //     assert_eq!("c:5 l:1 c:0 ls:[5, 5]", buff.test());
-    //     assert_eq!("john\n", buff.content.iter().collect::<String>());
-    //     buff.remove();
-    //     assert_eq!("john", buff.content.iter().collect::<String>());
-    // }
-    //
-    // fn add_string_to_buffer(buffer: &mut Buffer, content: &str) {
-    //     for char in content.chars() {
-    //         buffer.insert(char);
-    //     }
-    // }
 
     #[test]
     fn test_insert_char() {
@@ -371,20 +265,132 @@ mod tests {
     fn test_move_cursor_update_line_and_column() {
         let mut buffer = Buffer::new();
         buffer.insert('a');
+        buffer.insert('\n');
+        buffer.insert('a');
         buffer.insert('a');
         buffer.insert('\n');
         buffer.insert('a');
         buffer.insert('a');
-        assert_eq!("aa\naa", buffer.content.iter().collect::<String>());
-        assert_eq!("buffer_pos:5 line:1 column:2 lines:[3, 5]", buffer.test());
+        buffer.insert('a');
+        buffer.insert('\n');
+        buffer.insert('a');
+        buffer.insert('a');
+        buffer.insert('a');
+        buffer.insert('a');
+        assert_eq!("a\naa\naaa\naaaa", buffer.content.iter().collect::<String>());
+        assert_eq!("buffer_pos:13 line:3 column:4 lines:[2, 5, 9, 13]", buffer.test());
 
         buffer.move_cursor(1);
-        assert_eq!("buffer_pos:1 line:0 column:1 lines:[3, 5]", buffer.test());
-
+        assert_eq!(2, buffer.current_line_cols());
         buffer.move_cursor(2);
-        assert_eq!("buffer_pos:2 line:0 column:2 lines:[3, 5]", buffer.test());
+        assert_eq!(3, buffer.current_line_cols());
+        buffer.move_cursor(5);
+        assert_eq!(4, buffer.current_line_cols());
+    }
+
+    #[test]
+    fn test_current_line_cols_works_ok() {
+        let mut buffer = Buffer::new();
+        buffer.insert('a');
+        buffer.insert('\n');
+        buffer.insert('a');
+        buffer.insert('a');
+        buffer.insert('\n');
+        buffer.insert('a');
+        buffer.insert('a');
+        buffer.insert('a');
+        buffer.insert('\n');
+        buffer.insert('a');
+        buffer.insert('a');
+        buffer.insert('a');
+        buffer.insert('a');
+        assert_eq!("a\naa\naaa\naaaa", buffer.content.iter().collect::<String>());
+        assert_eq!("buffer_pos:13 line:3 column:4 lines:[2, 5, 9, 13]", buffer.test());
+
+        buffer.move_cursor(1);
+        assert_eq!(2, buffer.current_line_cols());
+        buffer.move_cursor(2);
+        assert_eq!(3, buffer.current_line_cols());
+        buffer.move_cursor(5);
+        assert_eq!(4, buffer.current_line_cols());
+    }
+
+    #[test]
+    fn test_mv_right_works_ok() {
+        let mut buffer = build_test_buffer("aa\naaaa");
+        assert_eq!("aa\naaaa", buffer.content.iter().collect::<String>());
+        assert_eq!("buffer_pos:7 line:1 column:4 lines:[3, 7]", buffer.test());
+
+        buffer.move_cursor(0);
+        assert_eq!("buffer_pos:0 line:0 column:0 lines:[3, 7]", buffer.test());
+
+        buffer.mv(Move::Right, false, false);
+        assert_eq!("buffer_pos:1 line:0 column:1 lines:[3, 7]", buffer.test());
+        buffer.mv(Move::Right, false, false);
+        assert_eq!("buffer_pos:2 line:0 column:2 lines:[3, 7]", buffer.test());
+        buffer.mv(Move::Right, false, false);
+        assert_eq!("buffer_pos:3 line:1 column:0 lines:[3, 7]", buffer.test());
+        buffer.mv(Move::Right, false, false);
+        assert_eq!("buffer_pos:4 line:1 column:1 lines:[3, 7]", buffer.test());
+    }
+
+    #[test]
+    fn test_mv_left_works_ok() {
+        let mut buffer = build_test_buffer("aaaa\naa");
+        assert_eq!("aaaa\naa", buffer.content.iter().collect::<String>());
+        assert_eq!("buffer_pos:7 line:1 column:2 lines:[5, 7]", buffer.test());
+
+        buffer.mv(Move::Left, false, false);
+        assert_eq!("buffer_pos:6 line:1 column:1 lines:[5, 7]", buffer.test());
+        buffer.mv(Move::Left, false, false);
+        assert_eq!("buffer_pos:5 line:1 column:0 lines:[5, 7]", buffer.test());
+        buffer.mv(Move::Left, false, false);
+        assert_eq!("buffer_pos:4 line:0 column:4 lines:[5, 7]", buffer.test());
+        buffer.mv(Move::Left, false, false);
+        assert_eq!("buffer_pos:3 line:0 column:3 lines:[5, 7]", buffer.test());
+    }
+
+    #[test]
+    fn test_mv_down_works_ok() {
+        let mut buffer = build_test_buffer("aaaa\naa\naaa");
+        assert_eq!("aaaa\naa\naaa", buffer.content.iter().collect::<String>());
+        assert_eq!("buffer_pos:11 line:2 column:3 lines:[5, 8, 11]", buffer.test());
 
         buffer.move_cursor(3);
-        assert_eq!("buffer_pos:3 line:1 column:0 lines:[3, 5]", buffer.test());
+
+        buffer.mv(Move::Down, false, false);
+        assert_eq!("buffer_pos:8 line:1 column:3 lines:[5, 8, 11]", buffer.test());
+        buffer.mv(Move::Down, false, false);
+        assert_eq!("buffer_pos:11 line:2 column:3 lines:[5, 8, 11]", buffer.test());
+    }
+
+    #[test]
+    fn test_mv_up_works_ok() {
+        let mut buffer = build_test_buffer("aaaa\naa\naaa");
+        assert_eq!("aaaa\naa\naaa", buffer.content.iter().collect::<String>());
+        assert_eq!("buffer_pos:11 line:2 column:3 lines:[5, 8, 11]", buffer.test());
+
+        buffer.mv(Move::Up, false, false);
+        assert_eq!("buffer_pos:7 line:1 column:3 lines:[5, 8, 11]", buffer.test());
+        buffer.mv(Move::Up, false, false);
+        assert_eq!("buffer_pos:3 line:0 column:3 lines:[5, 8, 11]", buffer.test());
+
+        buffer.move_cursor(6);
+        assert_eq!("buffer_pos:6 line:1 column:1 lines:[5, 8, 11]", buffer.test());
+        buffer.mv(Move::Up, false, true);
+        assert_eq!("buffer_pos:4 line:0 column:4 lines:[5, 8, 11]", buffer.test());
+
+        buffer.move_cursor(6);
+        assert_eq!("buffer_pos:6 line:1 column:1 lines:[5, 8, 11]", buffer.test());
+        buffer.mv(Move::Up, true, false);
+        assert_eq!("buffer_pos:0 line:0 column:0 lines:[5, 8, 11]", buffer.test());
+    }
+
+    fn build_test_buffer(content: &str) -> Buffer {
+        let mut buffer = Buffer::new();
+        for i in content.chars() {
+            buffer.insert(i);
+        }
+        buffer
     }
 }
