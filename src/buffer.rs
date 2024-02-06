@@ -114,7 +114,7 @@ impl Buffer {
                 self.line -= 1;
 
                 let curr_line_columns = self.current_line_cols();
-                if curr_line_columns < self.column {
+                if curr_line_columns < self.column + 1 {
                     self.column = curr_line_columns - 1;
                 }
                 self.cursor = match self.line {
@@ -143,7 +143,7 @@ impl Buffer {
                 self.line += 1;
 
                 let curr_line_columns = self.current_line_cols();
-                if curr_line_columns < self.column {
+                if curr_line_columns < self.column + 1 {
                     self.column = curr_line_columns - 1;
                 }
                 self.cursor = match self.line {
