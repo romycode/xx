@@ -1,10 +1,12 @@
 use std::io::{Stdout, Write};
 
 use crossterm::{Command, cursor, event, QueueableCommand, style};
-use crossterm::terminal::{Clear, ClearType};
+use crossterm::terminal::{Clear, ClearType, size};
+use crossterm::terminal::ClearType::Purge;
 
 pub struct Term<'t> {
     stdout: &'t Stdout,
+    pub size: (u16, u16)
 }
 
 impl<'t> Drop for Term<'t> {
@@ -13,8 +15,9 @@ impl<'t> Drop for Term<'t> {
 
 impl<'t> Term<'t> {
     pub fn new(stdout: &'t Stdout) -> Self {
-        Self { stdout }
+        Self { stdout, size: size().unwrap() }
     }
+
     pub fn enable_raw(&self) {
         crossterm::terminal::enable_raw_mode().ok();
     }
@@ -44,6 +47,7 @@ impl<'t> Term<'t> {
     }
 
     pub fn flush(&mut self) {
+        self.queue(Clear(Purge));
         self.stdout.flush().ok();
     }
 }

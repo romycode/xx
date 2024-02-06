@@ -119,7 +119,7 @@ impl Buffer {
                 }
                 self.cursor = match self.line {
                     0 => self.column,
-                    v => self.lines[v - 1] + self.column - 1
+                    v => self.lines[v - 1] + self.column
                 };
 
                 if end {
@@ -371,7 +371,7 @@ mod tests {
         assert_eq!("buffer_pos:11 line:2 column:3 lines:[5, 8, 11]", buffer.test());
 
         buffer.mv(Move::Up, false, false);
-        assert_eq!("buffer_pos:7 line:1 column:3 lines:[5, 8, 11]", buffer.test());
+        assert_eq!("buffer_pos:8 line:1 column:3 lines:[5, 8, 11]", buffer.test());
         buffer.mv(Move::Up, false, false);
         assert_eq!("buffer_pos:3 line:0 column:3 lines:[5, 8, 11]", buffer.test());
 
